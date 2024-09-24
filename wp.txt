@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Define variables
+DB_NAME="wordpress"
+DB_USER="ardhian"
+DB_PASSWORD="12"
+
+# Update package repository
+apt update -y
+
+# Install required packages
+apt install -y php php-mysql mariadb-server apache2
+
+# Start and enable Apache and MariaDB services
+systemctl start apache2
+systemctl enable apache2
+systemctl start mariadb
+systemctl enable mariadb
+
+# Create WordPress database and user
+mysql -u root -e "CREATE DATABASE ${DB_NAME};"
+mysql -u root -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
+mysql -u root -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
+mysql -u root -e "FLUSH PRIVILEGES;"
+
+# Download and extract WordPress to /var/www/html/wordpress
+cd /var/www/html
+wget https://wordpress.org/latest.tar.gz
+tar -xvzf latest.tar.gz
+
+# Configure WordPress
+cp /var/www/html/wordpress/wp-config-sample.php /var/www/html/wordpress/wp-config.php
+sed -i "s/database_name_here/${DB_NAME}/" /var/www/html/wordpress/wp-config.php
+sed -i "s/username_here/${DB_USER}/" /var/www/html/wordpress/wp-config.php
+sed -i "s/password_here/${DB_PASSWORD}/" /var/www/html/wordpress/wp-config.php
+
+# Update Apache configuration to use WordPress as default site
+sed -i "s|DocumentRoot /var/www/html|DocumentRoot /var/www/html/wordpress|" /etc/apache2/sites-available/000-default.conf
+
+# Restart Apache to apply changes
+systemctl restart apache2
+
+echo "WordPress installation completed. Access your site using the server IP."

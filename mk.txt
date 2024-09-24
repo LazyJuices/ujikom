@@ -1,0 +1,61 @@
+# Naming interfaces
+/interface set [ find default-name=ether1 ] name=ether1-INTERNET
+/interface set [ find default-name=ether2 ] name=ether2-VLAN
+/interface set [ find default-name=ether3 ] name=ether3-SERVER
+
+# Creating VLANs
+/interface vlan add name=SISWA vlan-id=10 interface=ether2-VLAN
+/interface vlan add name=GURU vlan-id=20 interface=ether2-VLAN
+
+# Setting up DHCP Client
+/ip dhcp-client add interface=ether1-INTERNET disabled=no
+
+# Configuring Firewall NAT
+/ip firewall nat add chain=srcnat out-interface=ether1-INTERNET action=masquerade
+
+# Setting DNS
+/ip dns set servers=192.168.80.1,8.8.8.8 allow-remote-requests=yes
+/ip dns static add name=ardhian.com address=192.168.80.2
+
+# Creating IP addresses
+/ip address add address=192.168.10.1/24 interface=SISWA
+/ip address add address=192.168.20.1/24 interface=GURU
+/ip address add address=192.168.80.1/30 interface=ether3-SERVER
+
+# Creating DHCP Servers
+/ip pool add name=dhcp_SISWA ranges=192.168.10.1-192.168.10.50
+/ip dhcp-server add name=dhcp_SISWA interface=SISWA address-pool=dhcp_SISWA disabled=no
+/ip dhcp-server network add address=192.168.10.0/24 gateway=192.168.10.1 dns-server=192.168.80.1
+
+/ip pool add name=dhcp_GURU ranges=192.168.20.10-192.168.20.50
+/ip dhcp-server add name=dhcp_GURU interface=GURU address-pool=dhcp_GURU disabled=no
+/ip dhcp-server network add address=192.168.20.0/24 gateway=192.168.20.1 dns-server=192.168.80.1
+
+# Rename and configure wireless interface
+/interface wireless enable wlan1
+/interface wireless set [ find default-name=wlan1 ] name=wlan1-HOTSPOT mode=ap-bridge ssid=UKK-5
+
+# Create security profile
+/interface wireless security-profiles
+add authentication-types=wpa-psk,wpa2-psk mode=dynamic-keys name=PW wpa-pre-shared-key=12345678 wpa2-pre-shared-key=12345678
+
+# Apply security profile to wireless interface
+/interface wireless set wlan1-HOTSPOT security-profile=PW
+
+# Create IP address for WLAN
+/ip address add address=192.168.30.1/24 interface=wlan1-HOTSPOT
+
+# Create DHCP Server for WLAN
+/ip pool add name=dhcp_hotspot ranges=192.168.30.10-192.168.30.50
+/ip dhcp-server add name=dhcp_hotspot interface=wlan1-HOTSPOT address-pool=dhcp_hotspot disabled=no
+/ip dhcp-server network add address=192.168.30.0/24 gateway=192.168.30.1 dns-server=192.168.80.1
+
+# Create Hotspot User Profiles
+/ip hotspot user profile add name=kepalasekolah shared-users=1 rate-limit=512k/512k
+/ip hotspot user profile add name=guru shared-users=2 rate-limit=256k/256k
+/ip hotspot user profile add name=siswa shared-users=3 rate-limit=128k/128k
+
+# Create Hotspot Users
+/ip hotspot user add name=kepalasekolah password=123 profile=kepalasekolah
+/ip hotspot user add name=guru password=456 profile=guru
+/ip hotspot user add name=siswa password=789 profile=siswa
